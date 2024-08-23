@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dataset Preprocessing Tool</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Custom CSS -->
+    <style>
+        body {
+            background: #f8f9fa; /* Light background for body */
+            min-height: 100vh;
+            padding-top: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            background: linear-gradient(to right, #74ebd5, #acb6e5);
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-top: 20px;
+        }
+        .left-panel {
+            border-right: 1px solid #ddd;
+            padding-right: 20px;
+        }
+        .right-panel {
+            padding-left: 20px;
+        }
+        .btn {
+            width: 100%;
+            margin-bottom: 10px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-family: 'Times New Roman', serif;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+            border-color: #6c757d;
+        }
+        .btn-warning {
+            background-color: #ffc107;
+            border-color: #ffc107;
+            color: #212529;
+        }
+        .btn-info {
+            background-color: #17a2b8;
+            border-color: #17a2b8;
+        }
+        .btn-success {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+        .form-control, .form-control-file {
+            border-radius: 10px;
+        }
+        h1, h3 {
+            color: #333;
+            text-align: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .plot-container img {
+            max-width: 100%;
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .stats-card, .details-card {
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            background-color: #fff;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .stats-card h4, .details-card h4 {
+            margin-bottom: 15px;
+            color: #007bff;
+        }
+        .stats-card ul, .details-card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        .stats-card ul li, .details-card ul li {
+            padding: 8px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .stats-card ul li:last-child, .details-card ul li:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mb-4">Dataset Preprocessing Tool</h1>
+        <div class="row">
+            <!-- Left Panel for Controls -->
+            <div class="col-md-4 left-panel">
+                <!-- File Upload Form -->
+                <form method="post" enctype="multipart/form-data" class="mb-4">
+                    <div class="form-group">
+                        <label for="upload_file" class="font-weight-bold">Upload CSV File:</label>
+                        <input type="file" class="form-control-file" id="upload_file" name="upload_file" accept=".csv">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </form>
+
+                <!-- Preprocessing Actions Form -->
+                <form method="post" class="mb-4">
+                    <div class="form-group">
+                        <label for="column" class="font-weight-bold">Select Column:</label>
+                        <select class="form-control" id="column" name="column">
+                            {% for column in columns %}
+                                <option value="{{ column }}" {% if column == column_name %}selected{% endif %}>{{ column }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" name="handle_missing_values" class="btn btn-secondary">Handle Missing Values</button>
+                    <button type="submit" name="encode_categorical_columns" class="btn btn-secondary">Encode Categorical Columns</button>
+                    <button type="submit" name="drop_duplicates" class="btn btn-secondary">Drop Duplicates</button>
+                    <button type="submit" name="scale_numeric_column" class="btn btn-secondary">Scale Numeric Column</button>
+                    <button type="submit" name="delete_column" class="btn btn-secondary">Delete Column</button>
+                    <button type="submit" name="undo" class="btn btn-warning">Undo Last Operation</button>
+                    <button type="submit" name="show_column_statistics" class="btn btn-info">Show Column Statistics</button>
+                    <button type="submit" name="show_dataset_details" class="btn btn-info">Show Dataset Details</button>
+                    <div class="form-group mt-3">
+                        <label for="plot_type" class="font-weight-bold">Select Plot Type:</label>
+                        <select class="form-control" id="plot_type" name="plot_type">
+                            <option value="">--Select--</option>
+                            <option value="histogram">Histogram</option>
+                            <option value="scatter">Scatter Plot</option>
+                            <option value="box">Box Plot</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="x_column" class="font-weight-bold">Select X Column (for scatter and histogram):</label>
+                        <select class="form-control" id="x_column" name="x_column">
+                            <option value="">--Select--</option>
+                            {% for column in columns %}
+                                <option value="{{ column }}" {% if column == x_column %}selected{% endif %}>{{ column }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="y_column" class="font-weight-bold">Select Y Column (for scatter):</label>
+                        <select class="form-control" id="y_column" name="y_column">
+                            <option value="">--Select--</option>
+                            {% for column in columns %}
+                                <option value="{{ column }}" {% if column == y_column %}selected{% endif %}>{{ column }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Generate Plot</button>
+                    <button type="submit" name="export_csv" class="btn btn-success">Export CSV</button>
+                </form>
+            </div>
+
+            <!-- Right Panel for Output -->
+            <div class="col-md-8 right-panel">
+                <!-- Dataset Details Section -->
+                {% if dataset_details %}
+                    <div class="details-card">
+                        <h4>Dataset Details</h4>
+                        <ul>
+                            <li><strong>Number of Rows:</strong> {{ dataset_details.num_rows }}</li>
+                            <li><strong>Number of Columns:</strong> {{ dataset_details.num_columns }}</li>
+                            <li><strong>Number of Numerical Columns:</strong> {{ dataset_details.num_numerical }}</li>
+                            <li><strong>Number of Categorical Columns:</strong> {{ dataset_details.num_categorical }}</li>
+                            <li><strong>Column Names:</strong> {{ dataset_details.column_names }}</li>
+                        </ul>
+                    </div>
+                {% endif %}
+
+                <!-- Column Analysis Section -->
+                {% if column_stats %}
+                    <div class="stats-card">
+                        <h4>Column Analysis: {{ column_name }}</h4>
+                        <ul>
+                            {% for key, value in column_stats.items() %}
+                                <li><strong>{{ key }}:</strong> {{ value }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+
+                <!-- Data Preview Section -->
+                <div class="table-container">
+                    <h3>Data Preview (Random 10 Records)</h3>
+                    {{ preview|safe }}
+                </div>
+
+                <!-- Plot Section -->
+                {% if plot_image %}
+                    <div class="plot-container">
+                        <h3>Data Plot</h3>
+                        <img src="data:image/png;base64,{{ plot_image }}" alt="Plot" class="img-fluid">
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
